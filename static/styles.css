@@ -1,0 +1,119 @@
+/* Additional custom styles for the admin interface */
+.card {
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.status-healthy {
+    background-color: #28a745;
+}
+
+.status-warning {
+    background-color: #ffc107;
+}
+
+.status-error {
+    background-color: #dc3545;
+}
+
+#api-response {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+#ws-data {
+    background-color: var(--bs-gray-800);
+    border: 1px solid var(--bs-gray-600);
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+    font-family: 'Courier New', monospace;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.card-title {
+    color: var(--bs-primary);
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.text-info {
+    color: #17a2b8 !important;
+}
+
+/* Chart container */
+#price-chart {
+    height: 300px !important;
+}
+
+/* Loading animation */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #007bff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Custom scrollbar for response area */
+#api-response::-webkit-scrollbar {
+    width: 8px;
+}
+
+#api-response::-webkit-scrollbar-track {
+    background: var(--bs-gray-800);
+}
+
+#api-response::-webkit-scrollbar-thumb {
+    background: var(--bs-gray-600);
+    border-radius: 4px;
+}
+
+#api-response::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-gray-500);
+}
