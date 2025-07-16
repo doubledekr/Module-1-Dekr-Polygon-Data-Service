@@ -26,6 +26,15 @@ def initialize_services():
     from services.websocket_service import WebSocketManager
     import app
     
+    # Ensure we have a proper event loop for async operations
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("Event loop is closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
     # Set up services the same way as in the lifespan function
     app.cache_manager = CacheManager()
     app.rate_limiter = RateLimiter()
@@ -53,16 +62,24 @@ class ASGIToWSGI:
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
         
-        # Create a new event loop for this request
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Try to get the existing event loop, or create a new one
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError("Event loop is closed")
+        except RuntimeError:
+            # Create a new event loop for this request
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         
         try:
             # Run the ASGI application
             result = loop.run_until_complete(self._run_asgi(environ, start_response))
             return result
-        finally:
-            loop.close()
+        except Exception as e:
+            logger.error(f"Error in ASGI-to-WSGI bridge: {e}")
+            start_response('500 Internal Server Error', [('Content-Type', 'text/plain')])
+            return [f'Internal Server Error: {str(e)}'.encode()]
     
     async def _run_asgi(self, environ: Dict[str, Any], start_response: Callable):
         # Convert WSGI environ to ASGI scope
