@@ -1,11 +1,52 @@
 from app import app as fastapi_app
 import asyncio
 from typing import Callable, Dict, Any
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Flag to ensure services are initialized once
+_services_initialized = False
+
+def initialize_services():
+    """Initialize services synchronously for WSGI compatibility"""
+    global _services_initialized
+    
+    if _services_initialized:
+        return
+    
+    logger.info("Initializing services for WSGI compatibility...")
+    
+    # Import and initialize services manually
+    from utils.cache_manager import CacheManager
+    from utils.rate_limiter import RateLimiter
+    from services.polygon_service import PolygonDataService
+    from services.websocket_service import WebSocketManager
+    import app
+    
+    # Set up services the same way as in the lifespan function
+    app.cache_manager = CacheManager()
+    app.rate_limiter = RateLimiter()
+    app.polygon_service = PolygonDataService(app.cache_manager)
+    app.websocket_manager = WebSocketManager(app.polygon_service)
+    
+    # Set services as global variables
+    app.polygon_service = app.polygon_service
+    app.websocket_manager = app.websocket_manager
+    app.cache_manager = app.cache_manager
+    app.rate_limiter = app.rate_limiter
+    
+    _services_initialized = True
+    logger.info("Services initialized successfully")
 
 # ASGI to WSGI bridge for gunicorn compatibility
 class ASGIToWSGI:
     def __init__(self, asgi_app):
         self.asgi_app = asgi_app
+        # Initialize services when the adapter is created
+        initialize_services()
     
     def __call__(self, environ: Dict[str, Any], start_response: Callable):
         # Simple WSGI adapter for FastAPI
