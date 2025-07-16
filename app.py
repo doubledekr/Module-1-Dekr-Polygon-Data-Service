@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depe
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 import asyncio
 import json
 import logging
@@ -14,6 +15,10 @@ from services.polygon_service import PolygonDataService
 from services.websocket_service import WebSocketManager
 from utils.cache_manager import CacheManager
 from utils.rate_limiter import RateLimiter
+
+# Request models
+class WarmCacheRequest(BaseModel):
+    symbols: List[str]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -217,13 +222,13 @@ async def get_cache_stats():
 
 @app.post("/api/cache/warm")
 async def warm_cache(
-    symbols: List[str],
+    request: WarmCacheRequest,
     background_tasks: BackgroundTasks
 ):
     """Warm cache for specific symbols"""
     try:
-        background_tasks.add_task(cache_warming_for_symbols, symbols)
-        return {"message": f"Cache warming initiated for {len(symbols)} symbols"}
+        background_tasks.add_task(cache_warming_for_symbols, request.symbols)
+        return {"message": f"Cache warming initiated for {len(request.symbols)} symbols", "symbols": request.symbols}
     except Exception as e:
         logger.error(f"Error warming cache: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

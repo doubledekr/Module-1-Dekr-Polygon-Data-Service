@@ -143,7 +143,7 @@ class AdminDashboard {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(symbols)
+                body: JSON.stringify({ symbols: symbols })
             });
             
             const data = await response.json();

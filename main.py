@@ -106,9 +106,19 @@ class ASGIToWSGI:
         response_body = []
         
         async def receive():
+            # Get the request body from environ
+            body = b''
+            if environ.get('CONTENT_LENGTH'):
+                try:
+                    content_length = int(environ['CONTENT_LENGTH'])
+                    if content_length > 0:
+                        body = environ['wsgi.input'].read(content_length)
+                except (ValueError, TypeError):
+                    pass
+            
             return {
                 'type': 'http.request',
-                'body': b'',
+                'body': body,
                 'more_body': False,
             }
         
