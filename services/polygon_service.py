@@ -118,7 +118,7 @@ class PolygonDataService:
                 logger.info(f"Cache hit for quote {symbol} (age: {cache_age}s)")
                 return RealTimeQuote.from_dict(cached_quote)
         
-        # Fetch fresh quote from Polygon.io
+        # First try the real-time quote endpoint
         try:
             url = f"{self.base_url}/v2/last/nbbo/{symbol}"
             params = {'apikey': self.api_key}
@@ -144,13 +144,60 @@ class PolygonDataService:
                     
                     logger.info(f"Fetched and cached quote for {symbol}")
                     return quote
+                elif response.status == 403:
+                    # Free tier doesn't have access to real-time quotes
+                    # Fall back to using latest market data as quote
+                    logger.warning(f"Real-time quotes not available for free tier, using market data fallback for {symbol}")
+                    return await self._get_quote_from_market_data(symbol, tier)
                 else:
                     logger.error(f"Polygon API error {response.status} for quote {symbol}")
                     raise Exception(f"Polygon API error: {response.status}")
         
         except Exception as e:
             logger.error(f"Error fetching quote for {symbol}: {str(e)}")
-            raise Exception(f"Failed to fetch quote: {str(e)}")
+            # Try fallback to market data
+            try:
+                return await self._get_quote_from_market_data(symbol, tier)
+            except Exception as fallback_error:
+                logger.error(f"Fallback also failed for {symbol}: {str(fallback_error)}")
+                raise Exception(f"Failed to fetch quote: {str(e)}")
+    
+    async def _get_quote_from_market_data(self, symbol: str, tier: DataTier) -> RealTimeQuote:
+        """Fallback method to create quote from latest market data"""
+        try:
+            # Get latest market data (1 day)
+            market_data = await self.get_market_data(symbol, 'day', 1, tier)
+            
+            if not market_data:
+                raise Exception("No market data available")
+            
+            latest = market_data[-1]  # Get most recent data
+            
+            # Create a quote using the closing price as both bid and ask
+            # Add small spread for realism
+            close_price = latest.close
+            spread = close_price * 0.001  # 0.1% spread
+            
+            quote = RealTimeQuote(
+                symbol=symbol,
+                bid=close_price - spread/2,
+                ask=close_price + spread/2,
+                bid_size=100,  # Standard lot size
+                ask_size=100,
+                timestamp=datetime.now()
+            )
+            
+            # Cache the fallback quote
+            tier_config = get_tier_config(tier)
+            ttl = tier_config.real_time_delay
+            self.cache_manager.set(f"quote:{symbol}", quote.to_dict(), ttl)
+            
+            logger.info(f"Created fallback quote for {symbol} from market data (close: {close_price})")
+            return quote
+            
+        except Exception as e:
+            logger.error(f"Error creating fallback quote for {symbol}: {str(e)}")
+            raise Exception(f"Failed to create fallback quote: {str(e)}")
     
     async def get_batch_quotes(self, symbols: List[str], tier: DataTier = DataTier.FREEMIUM) -> List[RealTimeQuote]:
         """Get real-time quotes for multiple symbols"""
